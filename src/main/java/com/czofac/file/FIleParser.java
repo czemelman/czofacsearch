@@ -111,7 +111,13 @@ public class FIleParser {
 	private void parseSdnEntries(List<SdnEntry> sdnEntries){
 		for(SdnEntry currentEntry : sdnEntries){
 			SdnEntryModel currentSdnModel = new SdnEntryModel(currentEntry);
-			sdnEntryRepository.save(currentSdnModel);
+			if(!sdnEntryRepository.exists(currentSdnModel.getUid())){
+				sdnEntryRepository.save(currentSdnModel);
+			}else{
+				System.out.println("uid " + currentEntry.getUid() + " already exist");
+			}
+			//sdnEntryRepository.save(currentSdnModel);
+			
 		}
 	}
 }
