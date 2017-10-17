@@ -1,5 +1,9 @@
 package com.czofac.data.elements;
 
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
+
+
 public class Token {
 	private final String tokenName;
 	private final int tokenId;

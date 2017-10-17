@@ -5,8 +5,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-
+import java.util.Map;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Unmarshaller;
 
@@ -14,7 +16,8 @@ import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.czofac.models.SdnEntryModel;
+import com.czofac.data.elements.StopCombination;
+import com.czofac.data.elements.Token;
 import com.czofac.repositories.SdnEntryRepository;
 import com.czofac.tempuri.sdnlist.SdnList;
 import com.czofac.tempuri.sdnlist.SdnList.SdnEntry;
@@ -28,11 +31,22 @@ public class FIleParser {
 	private final static String SDN_LIST_START = "<sdnList>";
 	private final static String SDN_LIST_END = "</sdnList>";
 	private final static int MAX_ENTITITES_IN_CHUNK =100;
+	private  Map<String,Token> tokensByTokenName;
+	private  Map<Integer,StopCombination> stopCombinationsById;
+	private  List<SdnEntry> sdnEntries;
+	
 	
 	@Autowired
-	SdnEntryRepository sdnEntryRepository;
+	SdnEntryRepository sdnEntryRepository; 
+	
+	@Autowired
+	StopCombinationsExtractor stopCombinationsExtractor;
 	
 	public void parseSDNFIle(String sdnFilePath)throws Throwable{
+		tokensByTokenName = new  HashMap<String,Token>();
+		stopCombinationsById = new HashMap<Integer,StopCombination>();
+		sdnEntries = new ArrayList<SdnEntry>();
+		
 		try (BufferedReader br = new BufferedReader(new FileReader(sdnFilePath))) {
 
 			String line;
@@ -110,14 +124,50 @@ public class FIleParser {
 	
 	private void parseSdnEntries(List<SdnEntry> sdnEntries){
 		for(SdnEntry currentEntry : sdnEntries){
-			SdnEntryModel currentSdnModel = new SdnEntryModel(currentEntry);
-			if(!sdnEntryRepository.exists(currentSdnModel.getUid())){
-				sdnEntryRepository.save(currentSdnModel);
-			}else{
-				System.out.println("uid " + currentEntry.getUid() + " already exist");
-			}
-			//sdnEntryRepository.save(currentSdnModel);
+			List<StopCombination> stopCombinations = stopCombinationsExtractor.getStopCombinationsFromSdnEntry(currentEntry);
+		    //add tokens from stop combination into
+			//token id by token name map
+			addTokenIdByTokenNameEntries(stopCombinations);
 			
+		
+			//adding  stop combinations
+			//and populate sdn entries list within that stop combination
+			for(StopCombination currStopCombination : stopCombinations){
+				if(stopCombinationsById.containsKey(currStopCombination.getId())){
+					currStopCombination = stopCombinationsById.get(currStopCombination.getId());
+				}else{
+					stopCombinationsById.put(currStopCombination.getId(), currStopCombination);
+				}
+				//add value to sdn entries
+				currStopCombination.getBelongToSdnEntries().add(currentEntry.getUid());
+			}
+			// adding sdn entry
+			this.sdnEntries.add(currentEntry);
 		}
 	}
+	private void addTokenIdByTokenNameEntries(List <StopCombination> stopCombinations){
+		for(StopCombination currStopCombination : stopCombinations){
+			for(Token currToken : currStopCombination.getTokens()){
+				if(!tokensByTokenName.containsKey(currToken.getTokenName())){
+					tokensByTokenName.put(currToken.getTokenName(), currToken);
+				}
+			}
+		}
+	}
+
+	/**
+	 * @return the tokenIdsByTokenName
+	 */
+	public Map<String, Token> getTokenIdsByTokenName() {
+		return tokensByTokenName;
+	}
+
+	public Map<Integer, StopCombination> getStopCombinationsById() {
+		return stopCombinationsById;
+	}
+
+	public List<SdnEntry> getSdnEntries() {
+		return sdnEntries;
+	}
+
 }

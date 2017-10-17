@@ -3,16 +3,16 @@ package com.czofac.utils;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
-
 import com.czofac.data.elements.Token;
 
-@Component
+
 /**
  * Helper class that assigns numeric Id to Ofac  data elements 
  * e.g stop combination or token
+ * based on hashcode of the underlying strings
  */
-public class EntitiesEnumerator {
+@Component
+public class EntitiesEnumeratorHashBased implements EntitiesEnumerator {
 	/**
 	 * generates token id 
 	 * @param token
